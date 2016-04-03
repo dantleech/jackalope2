@@ -62,7 +62,7 @@ class Session
      */
     public function getRootNode()
     {
-        return $this->nodeManager->findByPath('/');
+        return $this->nodeManager->findNodeByPath('/');
     }
 
     /**
@@ -102,7 +102,7 @@ class Session
      */
     public function getNode($absPath, $depthHint = -1)
     {
-        return $this->nodeManager->findNode($absPath, $depthHint);
+        return $this->nodeManager->findNodeByPath($absPath, $depthHint);
     }
 
     /**
