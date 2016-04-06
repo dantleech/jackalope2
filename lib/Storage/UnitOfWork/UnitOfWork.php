@@ -62,7 +62,7 @@ class UnitOfWork
      *       leave this until the commit(). Should find out what the performance cost
      *       is if any.
      */
-    public function createNew(string $path): Node
+    public function createNode(string $path): Node
     {
         $uuid = $this->uuidFactory->uuid4();
         $node = new Node(
@@ -154,6 +154,12 @@ class UnitOfWork
 
             throw $e;
         }
+    }
+
+    public function clear()
+    {
+        $this->nodes = [];
+        $this->pathRegistry->clear();
     }
 
     /**

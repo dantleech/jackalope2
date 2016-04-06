@@ -72,4 +72,19 @@ class PathRegistryTest extends \PHPUnit_Framework_TestCase
         $this->assertTrue($this->pathRegistry->hasUuid(1534));
         $this->assertTrue($this->pathRegistry->hasPath('/asd'));
     }
+
+    /**
+     * It should clear.
+     */
+    public function testClear()
+    {
+        $this->pathRegistry->register('1234', '/1');
+        $this->pathRegistry->register('1334', '/2');
+
+        $this->pathRegistry->clear();
+        $this->assertFalse($this->pathRegistry->hasUuid(1234));
+        $this->assertFalse($this->pathRegistry->hasUuid(1334));
+        $this->assertFalse($this->pathRegistry->hasPath('/1'));
+        $this->assertFalse($this->pathRegistry->hasPath('/2'));
+    }
 }

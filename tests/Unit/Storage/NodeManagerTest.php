@@ -57,7 +57,8 @@ class NodeManagerTest extends \PHPUnit_Framework_TestCase
     public function testCreateRootNode()
     {
         $this->driver->pathExists('/')->willReturn(false);
-        $this->unitOfWork->createNew('/')->willReturn($this->node->reveal());
+        $this->unitOfWork->hasPath('/')->willReturn(false);
+        $this->unitOfWork->createNode('/')->willReturn($this->node->reveal());
 
         $node = $this->nodeManager->findNodeByPath('/');
 

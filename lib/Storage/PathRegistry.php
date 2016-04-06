@@ -6,8 +6,8 @@ namespace Jackalope2\Storage;
 
 class PathRegistry
 {
-    private $pathsByUuid;
-    private $uuidsByPath;
+    private $pathsByUuid = [];
+    private $uuidsByPath = [];
 
     public function register(string $uuid, string $path)
     {
@@ -83,5 +83,11 @@ class PathRegistry
         }
 
         return $paths;
+    }
+
+    public function clear()
+    {
+        $this->pathsByUuid = [];
+        $this->uuidsByPath = [];
     }
 }

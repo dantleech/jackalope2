@@ -37,8 +37,11 @@ class NodeManager
 
     public function findNodeByPath($path): Node
     {
-        if ($path === '/' && false === $this->driver->pathExists('/')) {
-            return $this->unitOfWork->createNew('/');
+        if (
+            $path === '/' && 
+            false === $this->unitOfWork->hasPath($path) &&
+            false === $this->driver->pathExists('/')) {
+            return $this->unitOfWork->createNode('/');
         }
 
         if ($this->unitOfWork->hasPath($path)) {
@@ -59,5 +62,15 @@ class NodeManager
     public function move($srcPath, $destPAth)
     {
         $this->unitOfWork->enqueueMove($srcPath, $destPath);
+    }
+
+    public function save()
+    {
+        $this->unitOfWork->commit();
+    }
+
+    public function clear()
+    {
+        $this->unitOfWork->clear();
     }
 }

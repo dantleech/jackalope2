@@ -48,7 +48,7 @@ class UnitOfWorkTest extends \PHPUnit_Framework_TestCase
         $this->pathRegistry->register($uuid, $path)->shouldBeCalled();
         $this->operationFactory->create(Argument::type(NodeDataInterface::class))->willReturn($this->operation1->reveal());
 
-        $this->unitOfWork->createNew($path);
+        $this->unitOfWork->createNode($path);
 
         $operation = $this->pendingOperations->dequeue();
         $this->assertNotNull($operation);
@@ -80,7 +80,7 @@ class UnitOfWorkTest extends \PHPUnit_Framework_TestCase
         $this->assertFalse($this->unitOfWork->hasUuid('1234'));
 
         $this->uuidFactory->uuid4()->willReturn('1234');
-        $this->unitOfWork->createNew('/path/to');
+        $this->unitOfWork->createNode('/path/to');
 
         $this->assertTrue($this->unitOfWork->hasUuid('1234'));
     }
@@ -103,7 +103,7 @@ class UnitOfWorkTest extends \PHPUnit_Framework_TestCase
     {
         $uuid = '1234';
         $this->uuidFactory->uuid4()->willReturn($uuid);
-        $this->unitOfWork->createNew('/path/to');
+        $this->unitOfWork->createNode('/path/to');
 
         $node = $this->unitOfWork->getNodeByUuid($uuid);
 
@@ -131,7 +131,7 @@ class UnitOfWorkTest extends \PHPUnit_Framework_TestCase
 
         // setup
         $this->uuidFactory->uuid4()->willReturn($uuid);
-        $this->unitOfWork->createNew($path);
+        $this->unitOfWork->createNode($path);
 
         $this->pathRegistry->getUuid($path)->willReturn($uuid);
 
@@ -152,6 +152,21 @@ class UnitOfWorkTest extends \PHPUnit_Framework_TestCase
         $this->operation2->commit($this->driver->reveal())->shouldBeCalled();
 
         $this->unitOfWork->commit();
+    }
+
+    /**
+     * It should clear.
+     */
+    public function testClear()
+    {
+        $path = '/path';
+        $uuid = '1234';
+        $this->uuidFactory->uuid4()->willReturn($uuid);
+        $this->unitOfWork->createNode($path);
+        $this->pathRegistry->register($uuid, $path)->shouldBeCalled();
+        $this->pathRegistry->clear()->shouldBeCalled();
+
+        $this->unitOfWork->clear();
     }
 
     /**
