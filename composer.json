@@ -9,7 +9,9 @@
         }
     ],
     "require": {
-        "phpcr/phpcr": "^2.1"
+        "phpcr/phpcr": "^2.1",
+        "phpunit/phpunit": "^5.3",
+        "ramsey/uuid": "^3.3"
     },
     "require-dev": {
     },

@@ -1,14 +1,20 @@
 <?php
 
-namespace Jackalope2;
+namespace Jackalope2\Storage;
 
-interface StorageInterface
+use Jackalope2\Storage\NodeDataInterface;
+
+interface DriverInterface
 {
-    public function store(Node $node);
+    public function store(NodeDataInterface $node);
 
     public function remove(string $uuid);
 
-    public function nodeByPath(string $path): Node;
+    public function findByPath(string $path): NodeDataInterface;
 
-    public function dataByUuid(string $uuid): Node;
+    public function findByUuid(string $uuid): NodeDataInterface;
+
+    public function pathExists(string $path): bool;
+
+    public function uuidExists(string $uuid): bool;
 }

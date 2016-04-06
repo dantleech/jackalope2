@@ -13,13 +13,13 @@ class Node
 {
     private $uuid;
     private $pathRegistry;
-    private $nodeData;
+    private $data;
 
-    public function __construct(string $uuid, PathRegistry $pathRegistry, NodeDataInterface $data = null)
+    public function __construct(string $uuid, PathRegistry $pathRegistry, NodeDataInterface $nodeData)
     {
         $this->uuid = $uuid;
         $this->pathRegistry = $pathRegistry;
-        $this->nodeData = $nodeData ?: new UnpersistedNodeData();
+        $this->data = $nodeData ?: new UnpersistedNodeData();
     }
 
     public function getUuid(): string
@@ -32,7 +32,7 @@ class Node
         return $this->pathRegistry->getPath($this->uuid);
     }
 
-    public function getPropertyValue($name): Property
+    public function getPropertyValue($name)
     {
         return $this->data->get($name);
     }

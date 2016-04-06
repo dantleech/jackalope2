@@ -1,28 +1,53 @@
 <?php
 
-namespace Jackalope2\Storage;
+namespace Jackalope2\Storage\UnitOfWork;
 
 use Jackalope2\Exception\UndefinedArrayKeyException;
 use Jackalope2\Storage\Node;
 use PHPCR\Util\PathHelper;
 use PHPCR\Util\UUIDHelper;
 use Jackalope2\Exception\UnsupportedOperationException;
+use Jackalope2\Storage\NodeDataInterface;
+use Jackalope2\Storage\DriverInterface;
+use Jackalope2\Storage\PathRegistry;
+use Jackalope2\Storage\UnitOfWork\OperationFactory;
+use Ramsey\Uuid\Uuid;
+use Ramsey\Uuid\UuidFactory;
+use Jackalope2\Storage\NodeData\UnpersistedNodeData;
 
+/**
+ * The unit of work knows about the path registry and driver.
+ *
+ * It needs the driver in order to commit transactions to it, the NodeManager
+ * also knows about the driver - should that dependency be moved here? 
+ *
+ * TODO: Is there even a requirement for a node manager?
+ */
 class UnitOfWork
 {
     private $nodes = [];
     private $pathRegistry;
     private $driver;
+    private $operationFactory;
+    private $uuidFactory;
 
     private $pendingOperations;
-    private $rollbackOperations;
 
-    public function __construct(DriverInterface $driver, PathRegistry $pathRegistry)
+    public function __construct(
+        DriverInterface $driver,
+        PathRegistry $pathRegistry,
+        OperationFactory $operationFactory,
+        UuidFactory $uuidFactory,
+
+        \SplQueue $pendingOperations = null
+    )
     {
         $this->driver = $driver;
         $this->pathRegistry = $pathRegistry;
-        $this->pendingOperations = new \SplQueue();
-        $this->rollbackOperations = new \SplQueue();
+        $this->operationFactory = $operationFactory;
+        $this->uuidFactory = $uuidFactory;
+
+        $this->pendingOperations = $pendingOperations ?: new \SplQueue();
     }
 
     /**
@@ -39,24 +64,31 @@ class UnitOfWork
      */
     public function createNew(string $path): Node
     {
-        $parentPath = PathHelper::parentPath($path);
+        $uuid = $this->uuidFactory->uuid4();
         $node = new Node(
-            $uuid = UUIDHelper::generateUuid(),
-            $this->pathRegistry
+            $uuid,
+            $this->pathRegistry,
+            $nodeData = new UnpersistedNodeData($uuid, $path, [])
         );
         $this->register($node, $path);
-        $this->pendingOperations->enqueue(new CreateOperation($node));
+        $this->pendingOperations->enqueue($this->operationFactory->create($nodeData));
 
         return $node;
     }
 
     /**
-     * Register a node at the given path.
+     * Register a storage NodeDataInterface instance wrap it in a Node.
      */
-    public function register(Node $node, $path)
+    public function registerNodeData(NodeDataInterface $nodeData)
     {
-        $this->nodes[$node->getUuid()] = $node;
-        $this->pathRegistry->register($node->getUuid(), $node->getPath());
+        $node = new Node(
+            $nodeData->getUuid(),
+            $this->pathRegistry,
+            $nodeData
+        );
+        $this->register($node, $nodeData->getPath());
+
+        return $node;
     }
 
     /**
@@ -67,12 +99,12 @@ class UnitOfWork
         $this->pendingOperations->enqueue(new MoveOperation($srcPath, $destPath));
     }
 
-    public function hasUuid($uuid): boolean
+    public function hasUuid($uuid): bool
     {
-        return isset($this->nodes[$node->getUuid()]);
+        return isset($this->nodes[$uuid]);
     }
 
-    public function hasPath($path): boolean
+    public function hasPath($path): bool
     {
         return $this->pathRegistry->hasPath($path);
     }
@@ -80,22 +112,22 @@ class UnitOfWork
     /**
      * Return a registered node by UUID.
      */
-    public function getNodeByUuid($uuid): Node
+    public function getNodeByUuid(string $uuid): Node
     {
         if (false === $this->hasUuid($uuid)) {
             throw new \InvalidArgumentException(sprintf(
-                'Node with UUID "%s" is not registred',
+                'Node with UUID "%s" is not registered',
                 $uuid
             ));
         }
 
-        return $this->nodes($uuid);
+        return $this->nodes[$uuid];
     }
 
     /**
      * Return a registered node by path.
      */
-    public function getNodeByPath($path)
+    public function getNodeByPath(string $path)
     {
         $uuid = $this->pathRegistry->getUuid($path);
 
@@ -109,17 +141,27 @@ class UnitOfWork
      */
     public function commit()
     {
+        $rollbackOperations = new \SplQueue();
         try {
             foreach ($this->pendingOperations as $operation) {
                 $operation->commit($this->driver);
-                $this->rollbackOperations->enqueue($operation);
+                $rollbackOperations->enqueue($operation);
             }
         } catch (\Exception $e) {
-            foreach ($this->rollbackOperations as $operation) {
+            foreach ($rollbackOperations as $operation) {
                 $operation->rollback($this->driver);
             }
-        }
 
-        $this->rollbackOperations = new \SplQueue();
+            throw $e;
+        }
+    }
+
+    /**
+     * Register a node at the given path.
+     */
+    private function register(Node $node, $path)
+    {
+        $this->nodes[$node->getUuid()] = $node;
+        $this->pathRegistry->register($node->getUuid(), $path);
     }
 }
