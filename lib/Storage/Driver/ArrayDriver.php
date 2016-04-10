@@ -7,34 +7,35 @@ namespace Jackalope2\Storage\Driver;
 use Jackalope2\Storage\DriverInterface;
 use Jackalope2\Storage\NodeDataInterface;
 use Jackalope2\Storage\PathRegistry;
+use Jackalope2\Exception\UndefinedArrayKeyException;
+use Jackalope2\Storage\NodeRegistry;
 
 class ArrayDriver implements DriverInterface
 {
-    private $nodes;
-    private $pathRegistry;
+    private $nodeRegistries = [];
+    private $pathRegistries = [];
 
-    public function __construct()
+    /**
+     * {@inheritdoc}
+     */
+    public function store(string $workspaceName, NodeDataInterface $node)
     {
-        $this->pathRegistry = new PathRegistry();
+        $pathRegistry = $this->getPathRegistry($workspaceName);
+        $nodeRegistry = $this->getNodeRegistry($workspaceName);
+
+        $nodeRegistry->registerNode($node);
+        $pathRegistry->register($node->getUuid(), $node->getPath());
     }
 
     /**
      * {@inheritdoc}
      */
-    public function store(NodeDataInterface $node)
+    public function remove(string $workspaceName, string $uuid)
     {
-        $this->nodes[$node->getUuid()] = $node;
-        $this->pathRegistry->register($node->getUuid(), $node->getPath());
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function remove(string $uuid)
-    {
-        foreach ($this->pathRegistry->getDescendants($this->pathRegistry->getPath($uuid)) as $path) {
-            $uuid = $this->pathRegistry->getUuid($path);
-            unset($this->nodes[$uuid]);
+        $pathRegistry = $this->getPathRegistry($workspaceName);
+        foreach ($pathRegistry->getDescendants($this->pathRegistry->getPath($uuid)) as $path) {
+            $uuid = $pathRegistry->getUuid($path);
+            $this->getNodeRegistry($workspaceName)->removeNode($uuid);
         }
 
         $this->pathRegistry->removeByUuid($uuid);
@@ -43,39 +44,83 @@ class ArrayDriver implements DriverInterface
     /**
      * {@inheritdoc}
      */
-    public function findByPath(string $path): NodeDataInterface
+    public function findByPath(string $workspaceName, string $path): NodeDataInterface
     {
-        return $this->findByUuid($this->pathRegistry->getUuid($path));
+        return $this->findByUuid($workspaceName, $this->getPathRegistry($workspaceName)->getUuid($path));
     }
 
     /**
      * {@inheritdoc}
      */
-    public function findByUuid(string $uuid): NodeDataInterface
+    public function findByUuid(string $workspaceName, string $uuid): NodeDataInterface
     {
-        if (false === isset($this->nodes[$uuid])) {
+        // assert workspace exists.
+        $nodeRegistry = $this->getNodeRegistry($workspaceName);
+        return $nodeRegistry->getNode($uuid);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function pathExists(string $workspaceName, string $path): bool
+    {
+        return $this->getPathRegistry($workspaceName)->hasPath($path);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function uuidExists(string $workspaceName, string $uuid): bool
+    {
+        return $this->getNodeRegistry($workspaceName)->hasNode($uuid);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function createWorkspace(string $workspaceName)
+    {
+        if (isset($this->pathRegistries[$workspaceName])) {
             throw new \InvalidArgumentException(sprintf(
-                'Node with UUID "%s" not found',
-                $uuid
+                'Workspace "%s" already exists.',
+                $workspaceName
             ));
         }
 
-        return $this->nodes[$uuid];
+        $this->pathRegistries[$workspaceName] = new PathRegistry();
+        $this->nodeRegistries[$workspaceName] = new NodeRegistry();
     }
 
     /**
      * {@inheritdoc}
      */
-    public function pathExists(string $path): bool
+    public function deleteWorkspace(string $workspaceName)
     {
-        return $this->pathRegistry->hasPath($path);
+        // assert that the workspace exists.
+        $this->getPathRegistry($workspaceName);
+        unset($this->pathRegistries[$workspaceName]);
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function uuidExists(string $uuid): bool
+    public function listWorkspaces(): array
     {
-        return $this->pathRegistry->hasUuid($uuid);
+        return array_keys($this->pathRegistries);
+    }
+
+    private function getPathRegistry(string $workspaceName): PathRegistry
+    {
+        if (!isset($this->pathRegistries[$workspaceName])) {
+            throw new UndefinedArrayKeyException('workspace', $workspaceName, array_keys($this->pathRegistries));
+        }
+
+        return $this->pathRegistries[$workspaceName];
+    }
+
+    private function getNodeRegistry(string $workspaceName): NodeRegistry
+    {
+        if (!isset($this->nodeRegistries[$workspaceName])) {
+            throw new UndefinedArrayKeyException('workspace', $workspaceName, array_keys($this->nodeRegistries));
+        }
+
+        return $this->nodeRegistries[$workspaceName];
     }
 }

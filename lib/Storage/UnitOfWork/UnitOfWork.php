@@ -21,29 +21,28 @@ use Jackalope2\Storage\NodeData\UnpersistedNodeData;
  * It needs the driver in order to commit transactions to it, the NodeManager
  * also knows about the driver - should that dependency be moved here? 
  *
- * TODO: Is there even a requirement for a node manager?
+ * TODO: Remove this class, merge into NodeManager.
  */
 class UnitOfWork
 {
-    private $nodes = [];
+    private $nodeRegistry;
     private $pathRegistry;
-    private $driver;
     private $operationFactory;
     private $uuidFactory;
 
     private $pendingOperations;
 
     public function __construct(
-        DriverInterface $driver,
         PathRegistry $pathRegistry,
+        NodeRegistry $nodeRegistry,
         OperationFactory $operationFactory,
         UuidFactory $uuidFactory,
 
         \SplQueue $pendingOperations = null
     )
     {
-        $this->driver = $driver;
         $this->pathRegistry = $pathRegistry;
+        $this->nodeRegistry = $nodeRegistry;
         $this->operationFactory = $operationFactory;
         $this->uuidFactory = $uuidFactory;
 
@@ -101,7 +100,7 @@ class UnitOfWork
 
     public function hasUuid($uuid): bool
     {
-        return isset($this->nodes[$uuid]);
+        return $this->nodeRegistry->nodeExists($uuid);
     }
 
     public function hasPath($path): bool
@@ -114,14 +113,7 @@ class UnitOfWork
      */
     public function getNodeByUuid(string $uuid): Node
     {
-        if (false === $this->hasUuid($uuid)) {
-            throw new \InvalidArgumentException(sprintf(
-                'Node with UUID "%s" is not registered',
-                $uuid
-            ));
-        }
-
-        return $this->nodes[$uuid];
+        return $this->nodeRegistry->getNode($uuid);
     }
 
     /**
@@ -131,7 +123,7 @@ class UnitOfWork
     {
         $uuid = $this->pathRegistry->getUuid($path);
 
-        return $this->getNodeByUuid($uuid);
+        return $this->nodeRegistry->getNode($uuid);
     }
 
     /**
@@ -139,17 +131,17 @@ class UnitOfWork
      *
      * If an exception is encountered, then the transaction will be rolled back.
      */
-    public function commit()
+    public function commit(string $workspaceName, DriverInterface $driver)
     {
         $rollbackOperations = new \SplQueue();
         try {
             foreach ($this->pendingOperations as $operation) {
-                $operation->commit($this->driver);
+                $operation->commit($workspaceName, $driver);
                 $rollbackOperations->enqueue($operation);
             }
         } catch (\Exception $e) {
             foreach ($rollbackOperations as $operation) {
-                $operation->rollback($this->driver);
+                $operation->rollback($workspaceName, $driver);
             }
 
             throw $e;
@@ -158,7 +150,7 @@ class UnitOfWork
 
     public function clear()
     {
-        $this->nodes = [];
+        $this->nodeRegistry->clear();
         $this->pathRegistry->clear();
     }
 
@@ -167,7 +159,7 @@ class UnitOfWork
      */
     private function register(Node $node, $path)
     {
-        $this->nodes[$node->getUuid()] = $node;
+        $this->nodeRegistry->registerNode($node);
         $this->pathRegistry->register($node->getUuid(), $path);
     }
 }

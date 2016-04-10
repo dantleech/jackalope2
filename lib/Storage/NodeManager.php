@@ -14,11 +14,17 @@ use Jackalope2\Storage\DriverInterface;
  */
 class NodeManager
 {
+    private $workspaceName;
     private $unitOfWork;
     private $driver;
 
-    public function __construct(UnitOfWork $unitOfWork, DriverInterface $driver)
+    public function __construct(
+        string $workspaceName,
+        DriverInterface $driver, 
+        UnitOfWork $unitOfWork
+    )
     {
+        $this->workspaceName = $workspaceName;
         $this->unitOfWork = $unitOfWork;
         $this->driver = $driver;
     }
@@ -29,7 +35,7 @@ class NodeManager
             return $this->unitOfWork->getNodeByUuid($uuid);
         }
 
-        $nodeData = $this->driver->findByUuid($uuid);
+        $nodeData = $this->driver->findByUuid($workspace, $uuid);
         $node = $this->unitOfWork->registerNodeData($nodeData);
 
         return $node;
@@ -40,7 +46,7 @@ class NodeManager
         if (
             $path === '/' && 
             false === $this->unitOfWork->hasPath($path) &&
-            false === $this->driver->pathExists('/')) {
+            false === $this->driver->pathExists($workspace, '/')) {
             return $this->unitOfWork->createNode('/');
         }
 
@@ -48,7 +54,7 @@ class NodeManager
             return $this->unitOfWork->getNodeByPath($path);
         }
 
-        $nodeData = $this->driver->findByPath($path);
+        $nodeData = $this->driver->findByPath($workspace, $path);
         $node = $this->unitOfWork->registerNodeData($nodeData);
 
         return $node;
@@ -66,7 +72,7 @@ class NodeManager
 
     public function save()
     {
-        $this->unitOfWork->commit();
+        $this->unitOfWork->commit($driver);
     }
 
     public function clear()

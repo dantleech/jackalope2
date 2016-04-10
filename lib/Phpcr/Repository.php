@@ -20,8 +20,12 @@ class Repository implements RepositoryInterface
     public function login(CredentialsInterface $credentials, $workspaceName = null)
     {
         // TODO: Security
+        $workspace = new Workspace(
+            $workspaceName,
+            $this->container->get('storage.driver')
+        );
 
-        return $this->container->get('phpcr.session.factory')->createSession();
+        return $this->container->get('phpcr.session.factory')->createSession($workspaceName);
     }
 
     public function getDescriptorKeys()

@@ -16,12 +16,12 @@ class CreateOperation implements OperationInterface
         $this->node = $node;
     }
 
-    public function commit(DriverInterface $driver)
+    public function commit($workspace, DriverInterface $driver)
     {
         $driver->store($this->node);
     }
 
-    public function rollback(DriverInterface $driver)
+    public function rollback($workspace, DriverInterface $driver)
     {
         $driver->remove($this->node->getUuid());
     }

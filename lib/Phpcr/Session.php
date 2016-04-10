@@ -3,6 +3,7 @@
 namespace Jackalope2\Phpcr;
 
 use PHPCR\WorkspaceInterface;
+use PHPCR\RepositoryInterface;
 
 class Session
 {
@@ -10,7 +11,11 @@ class Session
     private $workspace;
     private $nodeManager;
 
-    public function __construct(Repository $repository, WorkspaceInterface $workspace, NodeManager $nodeManager)
+    public function __construct(
+        NodeManager $nodeManager,
+        RepositoryInterface $repository, 
+        WorkspaceInterface $workspace
+    )
     {
         $this->repository = $repository;
         $this->workspace = $workspace;
