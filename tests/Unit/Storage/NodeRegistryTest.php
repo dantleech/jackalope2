@@ -4,14 +4,16 @@ namespace Jackalope2\Tests\Unit\Storage;
 
 use Jackalope2\Storage\NodeRegistry;
 use Jackalope2\Storage\NodeDataInterface;
+use Jackalope2\Storage\NodeInterface;
 
 class NodeRegistryTest extends \PHPUnit_Framework_TestCase
 {
     public function setUp()
     {
         $this->registry = new NodeRegistry();
-        $this->node = $this->prophesize(NodeDataInterface::class);
+        $this->node = $this->prophesize(NodeInterface::class);
         $this->node->getUuid()->willReturn('1234');
+        $this->node->getPath()->willReturn('/path/to');
     }
 
     /**
@@ -21,7 +23,7 @@ class NodeRegistryTest extends \PHPUnit_Framework_TestCase
     public function testRegisterNode()
     {
         $this->registry->registerNode($this->node->reveal());
-        $node = $this->registry->getNode('1234');
+        $node = $this->registry->getNodeByUuid('1234');
         $this->assertSame($this->node->reveal(), $node);
     }
 
@@ -31,11 +33,11 @@ class NodeRegistryTest extends \PHPUnit_Framework_TestCase
      */
     public function testRemoveNode()
     {
-        $this->assertFalse($this->registry->hasNode('1234'));
+        $this->assertFalse($this->registry->hasUuid('1234'));
         $this->registry->registerNode($this->node->reveal());
-        $this->assertTrue($this->registry->hasNode('1234'));
-        $this->registry->removeNode('1234');
-        $this->assertFalse($this->registry->hasNode('1234'));
+        $this->assertTrue($this->registry->hasUuid('1234'));
+        $this->registry->remove('1234');
+        $this->assertFalse($this->registry->hasUuid('1234'));
     }
 
     /**
@@ -45,7 +47,10 @@ class NodeRegistryTest extends \PHPUnit_Framework_TestCase
     {
         $this->registry->registerNode($this->node->reveal());
         $this->registry->clear();
-        $this->assertFalse($this->registry->hasNode('1234'));
+        $this->assertFalse($this->registry->hasUuid('1234'));
+        $this->assertFalse($this->registry->hasUuid('1334'));
+        $this->assertFalse($this->registry->hasPath('/1'));
+        $this->assertFalse($this->registry->hasPath('/2'));
     }
 
     /**
@@ -69,6 +74,36 @@ class NodeRegistryTest extends \PHPUnit_Framework_TestCase
     public function testGetNodeNonExisting()
     {
         $this->registry->registerNode($this->node->reveal());
-        $this->registry->getNode('4321');
+        $this->registry->getNodeByUuid('4321');
+    }
+
+    /**
+     * It should remove a path and all its descendants.
+     */
+    public function testRemovePathAndDescendants()
+    {
+        foreach ([
+            [ '1', '/1' ],
+            [ '2', '/1/2' ],
+            [ '3', '/1/2/3' ],
+            [ '4', '/asd' ],
+        ] as $nodeTuple) {
+            list($uuid, $path) = $nodeTuple;
+            $node = $this->prophesize(NodeInterface::class);
+            $node->getUuid()->willReturn($uuid);
+            $node->getPath()->willReturn($path);
+            $this->registry->registerNode($node->reveal());
+        }
+
+        $this->registry->remove('1');
+
+        $this->assertFalse($this->registry->hasUuid('1'));
+        $this->assertFalse($this->registry->hasPath('/1'));
+        $this->assertFalse($this->registry->hasUuid('2'));
+        $this->assertFalse($this->registry->hasPath('/1/2'));
+        $this->assertFalse($this->registry->hasUuid('3'));
+        $this->assertFalse($this->registry->hasPath('/1/2/3'));
+        $this->assertTrue($this->registry->hasUuid('4'));
+        $this->assertTrue($this->registry->hasPath('/asd'));
     }
 }

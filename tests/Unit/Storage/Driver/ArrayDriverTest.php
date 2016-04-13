@@ -2,14 +2,14 @@
 
 namespace Jackalope2\Tests\Unit\Storage\Driver;
 
-use Jackalope2\Storage\NodeDataInterface;
+use Jackalope2\Storage\NodeInterface;
 use Jackalope2\Storage\Driver\ArrayDriver;
 
 class ArrayDriverTest extends \PHPUnit_Framework_TestCase
 {
     public function setUp()
     {
-        $this->nodeData = $this->prophesize(NodeDataInterface::class);
+        $this->node = $this->prophesize(NodeInterface::class);
         $this->driver = new ArrayDriver();
     }
 
@@ -71,12 +71,12 @@ class ArrayDriverTest extends \PHPUnit_Framework_TestCase
         $workspace = 'bar';
 
         $this->driver->createWorkspace($workspace);
-        $this->nodeData->getUuid()->willReturn($uuid);
-        $this->nodeData->getPath()->willReturn($path);
-        $this->driver->store($workspace, $this->nodeData->reveal());
+        $this->node->getUuid()->willReturn($uuid);
+        $this->node->getPath()->willReturn($path);
+        $this->driver->store($workspace, $this->node->reveal());
 
-        $this->assertEquals($this->nodeData->reveal(), $this->driver->findByUuid($workspace, $uuid));
-        $this->assertEquals($this->nodeData->reveal(), $this->driver->findByPath($workspace, $path));
+        $this->assertEquals($this->node->reveal(), $this->driver->findByUuid($workspace, $uuid));
+        $this->assertEquals($this->node->reveal(), $this->driver->findByPath($workspace, $path));
         $this->assertTrue($this->driver->uuidExists($workspace, $uuid));
         $this->assertTrue($this->driver->pathExists($workspace, $path));
     }
@@ -91,11 +91,11 @@ class ArrayDriverTest extends \PHPUnit_Framework_TestCase
         $workspace = 'bar';
 
         $this->driver->createWorkspace($workspace);
-        $this->nodeData->getUuid()->willReturn($uuid);
-        $this->nodeData->getPath()->willReturn($path);
-        $this->driver->store($workspace, $this->nodeData->reveal());
+        $this->node->getUuid()->willReturn($uuid);
+        $this->node->getPath()->willReturn($path);
+        $this->driver->store($workspace, $this->node->reveal());
 
-        $this->assertEquals($this->nodeData->reveal(), $this->driver->findByUuid($workspace, $uuid));
-        $this->assertEquals($this->nodeData->reveal(), $this->driver->findByPath($workspace, $path));
+        $this->assertEquals($this->node->reveal(), $this->driver->findByUuid($workspace, $uuid));
+        $this->assertEquals($this->node->reveal(), $this->driver->findByPath($workspace, $path));
     }
 }

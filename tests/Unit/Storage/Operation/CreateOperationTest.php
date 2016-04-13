@@ -1,11 +1,10 @@
 <?php
 
-namespace Jackalope2\Tests\Unit\Storage\UnitOfWork\Operation;
+namespace Jackalope2\Tests\Unit\Storage\Operation;
 
 use Jackalope2\Storage\DriverInterface;
-use Jackalope2\Storage\Node;
-use Jackalope2\Storage\NodeDataInterface;
-use Jackalope2\Storage\UnitOfWork\Operation\CreateOperation;
+use Jackalope2\Storage\NodeInterface;
+use Jackalope2\Storage\Operation\CreateOperation;
 
 class CreateOperationTest extends \PHPUnit_Framework_TestCase
 {
@@ -14,7 +13,7 @@ class CreateOperationTest extends \PHPUnit_Framework_TestCase
     public function setUp()
     {
         $this->driver = $this->prophesize(DriverInterface::class);
-        $this->node = $this->prophesize(NodeDataInterface::class);
+        $this->node = $this->prophesize(NodeInterface::class);
         $this->operation = new CreateOperation($this->node->reveal());
     }
 
@@ -23,8 +22,8 @@ class CreateOperationTest extends \PHPUnit_Framework_TestCase
      */
     public function testCommit()
     {
-        $this->driver->store($this->node->reveal())->shouldBeCalled();
+        $this->driver->store('workspace', $this->node->reveal())->shouldBeCalled();
 
-        $this->operation->commit($this->driver->reveal());
+        $this->operation->commit('workspace', $this->driver->reveal());
     }
 }

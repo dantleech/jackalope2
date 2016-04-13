@@ -6,8 +6,13 @@ namespace Jackalope2\Storage;
 
 use PHPCR\Util\UUIDHelper;
 use Jackalope2\Storage\Node;
-use Jackalope2\Storage\UnitOfWork\UnitOfWork;
 use Jackalope2\Storage\DriverInterface;
+use Jackalope2\Storage\NodeInterface;
+use Ramsey\Uuid\UuidFactory;
+use Jackalope2\Storage\OperationFactory;
+use Jackalope2\Storage\NodeRegistry;
+use Jackalope2\Storage\PathRegistry;
+use Jackalope2\Storage\Node\ArrayNode;
 
 /**
  * The node manager knows about the storage and the unit of work.
@@ -15,68 +20,87 @@ use Jackalope2\Storage\DriverInterface;
 class NodeManager
 {
     private $workspaceName;
-    private $unitOfWork;
     private $driver;
+    private $nodeRegistry;
+    private $operationFactory;
+    private $uuidFactory;
 
     public function __construct(
         string $workspaceName,
         DriverInterface $driver, 
-        UnitOfWork $unitOfWork
+        NodeRegistry $nodeRegistry = null,
+        OperationFactory $operationFactory = null,
+        UuidFactory $uuidFactory,
+        \SplQueue $pendingOperations = null
     )
     {
         $this->workspaceName = $workspaceName;
-        $this->unitOfWork = $unitOfWork;
         $this->driver = $driver;
+        $this->nodeRegistry = $nodeRegistry ?: new NodeRegistry();
+        $this->operationFactory = $operationFactory ?: new OperationFactory();
+        $this->uuidFactory = $uuidFactory ?: new UuidFactory();
     }
 
-    public function findNodeByUuid($uuid): Node
+    public function getWorkspaceName()
     {
-        if ($this->unitOfWork->hasUuid($uuid)) {
-            return $this->unitOfWork->getNodeByUuid($uuid);
+        return $this->workspaceName;
+    }
+
+    public function findNodeByUuid($uuid): NodeInterface
+    {
+        if ($this->nodeRegistry->hasUuid($uuid)) {
+            return $this->nodeRegistry->getNodeByUuid($uuid);
         }
 
-        $nodeData = $this->driver->findByUuid($workspace, $uuid);
-        $node = $this->unitOfWork->registerNodeData($nodeData);
+        $node = $this->driver->findByUuid($this->workspaceName, $uuid);
+        $this->nodeRegistry->registerNode($node);
 
         return $node;
     }
 
-    public function findNodeByPath($path): Node
+    public function findNodeByPath($path): NodeInterface
     {
-        if (
-            $path === '/' && 
-            false === $this->unitOfWork->hasPath($path) &&
-            false === $this->driver->pathExists($workspace, '/')) {
-            return $this->unitOfWork->createNode('/');
+        if ($this->nodeRegistry->hasPath($path)) {
+            return $this->nodeRegistry->getNodeByPath($path);
         }
 
-        if ($this->unitOfWork->hasPath($path)) {
-            return $this->unitOfWork->getNodeByPath($path);
-        }
-
-        $nodeData = $this->driver->findByPath($workspace, $path);
-        $node = $this->unitOfWork->registerNodeData($nodeData);
+        $node = $this->driver->findByPath($this->workspaceName, $path);
+        $this->nodeRegistry->registerNode($node);
 
         return $node;
     }
 
-    public function createNode($path): Node
+    public function createNode($path): NodeInterface
     {
-        return $this->unitOfWork->createNode($path);
-    }
+        $uuid = $this->uuidFactory->uuid4();
+        $node = new ArrayNode(
+            $uuid,
+            $path
+        );
+        $this->nodeRegistry->registerNode($node);
 
-    public function move($srcPath, $destPAth)
-    {
-        $this->unitOfWork->enqueueMove($srcPath, $destPath);
+        return $node;
     }
 
     public function save()
     {
-        $this->unitOfWork->commit($driver);
+        $rollbackOperations = new \SplQueue();
+        try {
+            foreach ($this->pendingOperations as $operation) {
+                $operation->commit($this->workspaceName, $driver);
+                $rollbackOperations->enqueue($operation);
+            }
+        } catch (\Exception $e) {
+            foreach ($rollbackOperations as $operation) {
+                $operation->rollback($this->workspaceName, $driver);
+            }
+
+            throw $e;
+        }
     }
 
     public function clear()
     {
-        $this->unitOfWork->clear();
+        $this->nodeRegistry->clear();
     }
 }

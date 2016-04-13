@@ -1,8 +1,8 @@
 <?php
 
-namespace Jackalope2\Storage\UnitOfWork\Operation;
+namespace Jackalope2\Storage\Operation;
 
-use Jackalope2\Storage\UnitOfWork\OperationInterface;
+use Jackalope2\Storage\OperationInterface;
 
 class MoveOperation implements OperationInterface
 {

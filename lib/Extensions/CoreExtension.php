@@ -31,15 +31,6 @@ class CoreExtension implements ExtensionInterface
             );
         });
 
-        $container->register('storage.unit_of_work', function (Container $container) {
-            return new Storage\UnitOfWork\UnitOfWork(
-                $container->get('storage.driver'),
-                $container->get('storage.path_registry'),
-                new Storage\UnitOfWork\OperationFactory(),
-                $container->get('storage.uuid_factory')
-            );
-        });
-
         $container->register('storage.path_registry', function (Container $container) {
             return new Storage\PathRegistry();
         });

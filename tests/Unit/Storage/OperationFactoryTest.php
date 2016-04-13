@@ -1,11 +1,11 @@
 <?php
 
-namespace Jackalope2\Tests\Unit\Storage\UnitOfWork;
+namespace Jackalope2\Tests\Unit\Storage;
 
-use Jackalope2\Storage\UnitOfWork\Operation\CreateOperation;
-use Jackalope2\Storage\UnitOfWork\OperationFactory;
+use Jackalope2\Storage\Operation\CreateOperation;
+use Jackalope2\Storage\OperationFactory;
 use Jackalope2\Storage\Node;
-use Jackalope2\Storage\NodeDataInterface;
+use Jackalope2\Storage\NodeInterface;
 
 class OperationFactoryTest extends \PHPUnit_Framework_TestCase
 {
@@ -15,7 +15,7 @@ class OperationFactoryTest extends \PHPUnit_Framework_TestCase
     public function setUp()
     {
         $this->factory = new OperationFactory();
-        $this->nodeData = $this->prophesize(NodeDataInterface::class);
+        $this->nodeData = $this->prophesize(NodeInterface::class);
     }
 
     public function testCreate()

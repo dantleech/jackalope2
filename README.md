@@ -9,8 +9,7 @@ A POC/WIP for Jackalope 2
 General concepts:
 
 - Modular: Storage, Search, Versioning, etc all idependent and combinable.
-- PHPCR layer built upon simpler base layer.
-- Support for soft transactions.
+- PHPCR layer built upon decoupled components.
 - Lazy loading of properties (depending on storage).
 - Mandatory UUIDs.
 - PHP 7 only.
@@ -30,3 +29,17 @@ This second iteration will fully decouple storage, versioning, search (and
 whatever else). This will mean creating, for example, a file system backend
 will be realtively simple, and it can then be combined with, for example, an
 Zend Search module and a DBAL versioning module.
+
+## Storage
+
+The Storage component handles storing and retrieving data from any number of
+backends (e.g. MongoDB, PHP array, Elastic Search).
+
+It data is persisted and retrieved with ``Node`` objects (so named beacuse
+they translate to ``Node`` instances at the PHPCR level but are essentially
+DTOs).
+
+The ``NodeManager`` handles tracking of the ``Nodes`` and transactions, it
+is both a unit-of-work and an API, however key responsibilities, such as
+tracking nodes and paths,  are delegated and the class remains
+algorithmically simple.
