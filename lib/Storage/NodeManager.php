@@ -39,6 +39,7 @@ class NodeManager
         $this->nodeRegistry = $nodeRegistry ?: new NodeRegistry();
         $this->operationFactory = $operationFactory ?: new OperationFactory();
         $this->uuidFactory = $uuidFactory ?: new UuidFactory();
+        $this->pendingOperations = $pendingOperations ?: new \SplQueue();
     }
 
     public function getWorkspaceName()
@@ -74,10 +75,11 @@ class NodeManager
     {
         $uuid = $this->uuidFactory->uuid4();
         $node = new ArrayNode(
-            $uuid,
+            (string) $uuid,
             $path
         );
         $this->nodeRegistry->registerNode($node);
+        $this->pendingOperations->enqueue($this->operationFactory->create($node));
 
         return $node;
     }
@@ -87,12 +89,12 @@ class NodeManager
         $rollbackOperations = new \SplQueue();
         try {
             foreach ($this->pendingOperations as $operation) {
-                $operation->commit($this->workspaceName, $driver);
+                $operation->commit($this->workspaceName, $this->driver);
                 $rollbackOperations->enqueue($operation);
             }
         } catch (\Exception $e) {
             foreach ($rollbackOperations as $operation) {
-                $operation->rollback($this->workspaceName, $driver);
+                $operation->rollback($this->workspaceName, $this->driver);
             }
 
             throw $e;

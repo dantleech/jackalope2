@@ -24,23 +24,19 @@ class CoreExtension implements ExtensionInterface
 
     private function loadStorage(Container $container)
     {
-        $container->register('storage.node_manager', function (Container $container) {
-            return new Storage\NodeManager(
-                $container->get('storage.unit_of_work'),
-                $container->get('storage.driver')
-            );
-        });
-
-        $container->register('storage.path_registry', function (Container $container) {
-            return new Storage\PathRegistry();
-        });
-
         $container->register('storage.uuid_factory', function (Container $container) {
             return new \Ramsey\Uuid\UuidFactory();
         });
 
         $container->register('storage.driver', function (Container $container) {
             return new Storage\Driver\ArrayDriver();
+        });
+
+        $container->register('storage.node_manager_factory', function (Container $container) {
+            return new Storage\NodeManagerFactory(
+                $container->get('storage.uuid_factory'),
+                $container->get('storage.driver')
+            );
         });
     }
 }

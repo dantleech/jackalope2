@@ -2,8 +2,8 @@
 
 namespace Jackalope2\Tests\Functional\Storage;
 
-use Jackalope2\Storage\Node;
 use Jackalope2\Tests\Functional\FunctionalTestCase;
+use Jackalope2\Storage\NodeInterface;
 
 class NodeManagerTest extends FunctionalTestCase
 {
@@ -13,8 +13,9 @@ class NodeManagerTest extends FunctionalTestCase
     public function setUp()
     {
         $container = $this->getContainer();
-        $this->nodeManager = $container->get('storage.node_manager');
+        $this->nodeManager = $container->get('storage.node_manager_factory')->create('workspace');
         $this->driver = $container->get('storage.driver');
+        $this->driver->createWorkspace('workspace');
     }
 
     /**
@@ -23,7 +24,7 @@ class NodeManagerTest extends FunctionalTestCase
     public function testCreateRootNode()
     {
         $node = $this->nodeManager->createNode('/');
-        $this->assertInstanceOf(Node::class, $node);
+        $this->assertInstanceOf(NodeInterface::class, $node);
         $foundPath = $this->nodeManager->findNodeByPath('/');
         $foundUuid = $this->nodeManager->findNodeByUuid($node->getUuid());
 
@@ -41,7 +42,7 @@ class NodeManagerTest extends FunctionalTestCase
     {
         $this->nodeManager->createNode('/');
         $node = $this->nodeManager->createNode('/foo/bar');
-        $this->assertInstanceOf(Node::class, $node);
+        $this->assertInstanceOf(NodeInterface::class, $node);
 
         $foundNode = $this->nodeManager->findNodeByPath('/foo/bar');
 
@@ -57,15 +58,15 @@ class NodeManagerTest extends FunctionalTestCase
         $this->nodeManager->createNode('/foo');
         $this->nodeManager->save();
 
-        $this->assertTrue($this->driver->pathExists('/'));
-        $this->assertTrue($this->driver->pathExists('/foo'));
+        $this->assertTrue($this->driver->pathExists('workspace', '/'));
+        $this->assertTrue($this->driver->pathExists('workspace', '/foo'));
     }
 
     /**
      * It should throw an exception if trying to get an unknown node.
      *
      * @expectedException \InvalidArgumentException
-     * @expectedExceptionMessage Path "/path" is not known to the path registry, 0 paths currently registered.
+     * @expectedExceptionMessage No node has been registered with path "/path"
      */
     public function testGetNodeUnknown()
     {
